@@ -2,12 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="5429a974-3d18-4b99-b3e5-b24c8173a0f8" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/lib/BytesUtil.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DS_project2.iml" afterPath="$PROJECT_DIR$/DS_project2.iml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RaftNode.java" afterPath="$PROJECT_DIR$/RaftNode.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lib/RequestVoteArgs.java" afterPath="$PROJECT_DIR$/lib/RequestVoteArgs.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lib/RequestVoteReply.java" afterPath="$PROJECT_DIR$/lib/RequestVoteReply.java" />
     </list>
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -84,8 +79,8 @@
       <file leaf-file-name="workspace.xml" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-12290">
-              <caret line="171" column="13" lean-forward="true" selection-start-line="171" selection-start-column="13" selection-end-line="171" selection-end-column="13" />
+            <state relative-caret-position="-12164">
+              <caret line="177" column="13" lean-forward="true" selection-start-line="177" selection-start-column="13" selection-end-line="177" selection-end-column="13" />
               <folding />
             </state>
           </provider>
@@ -146,6 +141,7 @@
       <list>
         <option value="$PROJECT_DIR$/Config.java" />
         <option value="$PROJECT_DIR$/lib/Controller.java" />
+        <option value="$PROJECT_DIR$/.idea/workspace.xml" />
       </list>
     </option>
   </component>
@@ -329,7 +325,7 @@
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="2165000" />
+    <option name="totallyTimeSpent" value="2365000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-9" y="-9" width="1938" height="1060" extended-state="6" />
@@ -805,8 +801,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/.idea/workspace.xml">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-12290">
-          <caret line="171" column="13" lean-forward="true" selection-start-line="171" selection-start-column="13" selection-end-line="171" selection-end-column="13" />
+        <state relative-caret-position="-12164">
+          <caret line="177" column="13" lean-forward="true" selection-start-line="177" selection-start-column="13" selection-end-line="177" selection-end-column="13" />
           <folding />
         </state>
       </provider>
