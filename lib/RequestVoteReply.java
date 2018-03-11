@@ -7,8 +7,11 @@ import java.io.Serializable;
  * should be serializable to return by remote function call.
  *
  */
-public class RequestVoteReply{
-    public RequestVoteReply() {
-
+public class RequestVoteReply implements Serializable {
+    private int term;
+    private boolean voteGranted;
+    public RequestVoteReply(int term, boolean voteGranted) {
+        this.term = term;
+        this.voteGranted = voteGranted;
     }
 }
