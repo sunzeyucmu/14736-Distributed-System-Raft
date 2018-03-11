@@ -7,6 +7,7 @@ public class RaftNode implements MessageHandling {
     public RaftNode(int port, int id, int num_peers) {
         this.id = id;
         this.num_peers = num_peers;
+        /* Create a new instance of TransportLib */
         lib = new TransportLib(port, id, this);
     }
 
