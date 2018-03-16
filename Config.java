@@ -27,6 +27,11 @@ public class Config extends UnicastRemoteObject implements Remote {
 
     private Map<Integer, BlockingQueue<ApplyMsg>> applyMsgMap;
 
+    /* Key Function :
+            Called to Build a Raft Server (RaftNode is called here)
+            By Passing the Controller's Port Number, id for this RaftNode and number of Peers Raft Nodes
+            existing in this Cluster
+     */
     private Process spawnRaftPeer( int controllerPort, int id, int numServers ) {
 
         Process raftPeer = null;
@@ -120,7 +125,8 @@ public class Config extends UnicastRemoteObject implements Remote {
                 }
             }).start();
 
-            /* Create a new Raft server. */
+            /* $$$Create a new Raft server.$$$
+            *  Node id is based on the number of Servers */
             raftPeers[i] = spawnRaftPeer(controllerPort, i, numServers);
 
             /* Connect this raft peer*/

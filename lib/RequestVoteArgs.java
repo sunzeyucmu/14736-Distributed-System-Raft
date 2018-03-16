@@ -8,12 +8,14 @@ import java.io.Serializable;
  * Message to be sent.
  *
  */
+@SuppressWarnings("serial")
 public class RequestVoteArgs implements Serializable {
+    /* Invoke by candidate to gather votes(During Election) */
 
-    private int term;
-    private int candidateId;
-    private int lastLogIndex;
-    private int lastLogTerm;
+    public int term; // candidate's term
+    public int candidateId; // candidate's ID(server ID)
+    public int lastLogIndex; // index of candidate's last log entry
+    public int lastLogTerm; // term of candidate's last log entry
 
     public RequestVoteArgs(int term, int candidateId, int lastLogIndex, int lastLogTerm) {
         this.term = term;

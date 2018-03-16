@@ -5,6 +5,7 @@ import java.io.*;
 public class BytesUtil {
 
 
+    /* Object to Bytes */
     public static byte[] serialize(Object obj) {
         byte[] stream = null;
         try (
@@ -12,6 +13,8 @@ public class BytesUtil {
                 ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)
         ) {
             objectOutputStream.writeObject(obj);
+            /* For Safety */
+            objectOutputStream.flush();
             stream = byteArrayOutputStream.toByteArray();
         } catch (IOException e) {
             // Error in serialization
@@ -20,6 +23,7 @@ public class BytesUtil {
         return stream;
     }
 
+    /* Bytes to Object */
     // need cast after deserialization
     public static Object deserialize(byte[] stream) {
         Object obj = null;
