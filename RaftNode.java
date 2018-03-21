@@ -38,7 +38,7 @@ public class RaftNode implements MessageHandling, Runnable {
     private int id; // id for this Node(Server)
     protected  TransportLib lib; // Instance of TransportLib for communication between peer Raft Nodes
     private int port; // port Number of Controller
-    private int num_peers; // Num of peer RaftNodes existing in the cluster
+    protected int num_peers; // Num of peer RaftNodes existing in the cluster
 
 //    private boolean isLeader = false;
 //    private int currentTerm = 0;
@@ -216,13 +216,20 @@ public class RaftNode implements MessageHandling, Runnable {
             ArrayList<LogEntries> logs = new ArrayList<LogEntries>(); // Empty Entries
             for(int i=0; i<num_peers; i++){
                 if(i == this.id)continue;
+                Lock.lock();
+
+                int prevLastIndex = this.node_state.nextIndex[i] - 1;
+                int prevLastTerm = prevLastIndex == 0 ? 0 : this.node_state.log.get(prevLastIndex - 1).term;
             /* TODO: Here the last two params (0, 0) are for (prevLogIndex, prevLogTerm); Used Just for Now */
-                AppendEntriesArgs request_args = new AppendEntriesArgs(node_state.currentTerm, this.id, 0, 0, logs, node_state.commitIndex);
-            /* Open an AppendEntriesThread for each RPC call
+                AppendEntriesArgs request_args = new AppendEntriesArgs(node_state.currentTerm, this.id, prevLastIndex, prevLastTerm, logs, node_state.commitIndex);
+
+                Lock.unlock();
+                /* Open an AppendEntriesThread for each RPC call
              * Because using sendMessage to requestVote will block until there is a reply sent back.
              * */
                 AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, request_args);
                 thread.start();
+                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size());
             }
         }
     }
@@ -256,8 +263,10 @@ public class RaftNode implements MessageHandling, Runnable {
             1. Reply false if term < currentTerm
          */
         if(req_args.term < this.node_state.currentTerm){
+            System.out.println(System.currentTimeMillis()+" Request Vote From Node" +req_args.candidateId+" Term: "+req_args.term+" To Node "+this.id+" Term "+this.node_state.currentTerm);
             req_vote_reply = new RequestVoteReply(this.node_state.currentTerm, if_granted);
 
+            this.if_received_RPC = true;
             this.Lock.unlock();
 
             return req_vote_reply;
@@ -271,7 +280,9 @@ public class RaftNode implements MessageHandling, Runnable {
         /* If RPC request contains term T > currentTerm: set currentTerm = T, convert to follower  */
         if(req_args.term > this.node_state.currentTerm){
             this.node_state.currentTerm = req_args.term;
+//            System.out.print(System.currentTimeMillis() + "Node " + this.getId() +" Role From "+this.node_state.get_role());
             this.node_state.set_role(State.state.follower);
+//            System.out.println(System.currentTimeMillis() + "To " + this.node_state.get_role());
             this.node_state.votedFor = null; // New Term has Began
             this.votes_count = 0;
         }
@@ -300,6 +311,8 @@ public class RaftNode implements MessageHandling, Runnable {
 //            this.node_state.votedFor = req_args.candidateId;
         }
         req_vote_reply = new RequestVoteReply(this.node_state.currentTerm, if_granted);
+
+        this.if_received_RPC = true;
         this.Lock.unlock();
         return req_vote_reply;
     }
@@ -318,8 +331,10 @@ public class RaftNode implements MessageHandling, Runnable {
         this.Lock.lock();
 
         if(req_args.term < this.node_state.currentTerm){
+            System.out.println(System.currentTimeMillis()+" AppendEntries RPC From Node" +req_args.leaderId+" Term: "+req_args.term+" To Node "+this.id+" Term "+this.node_state.currentTerm);
             append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
 
+            this.if_received_RPC = true;
             this.Lock.unlock();
 
             return append_entry_reply;
@@ -333,7 +348,9 @@ public class RaftNode implements MessageHandling, Runnable {
          *      then the candidate recognizes the leader as legitimate and returns to follower state. */
         if(req_args.term > this.node_state.currentTerm || this.node_state.get_role() == State.state.candidate){
             this.node_state.currentTerm = req_args.term;
+//            System.out.print(System.currentTimeMillis() + "Node " + this.getId() +" Role From "+this.node_state.get_role());
             this.node_state.set_role(State.state.follower);
+//            System.out.println(System.currentTimeMillis() + "To " + this.node_state.get_role());
             this.node_state.votedFor = null; // New Term has Began
             this.votes_count = 0;
         }
@@ -344,6 +361,10 @@ public class RaftNode implements MessageHandling, Runnable {
                  If the follower does not find an entry in its log with the same index and term,
                  then it refuses the new entries.
          */
+//        if(req_args.entries.size() > 0){
+//            System.out.println(System.currentTimeMillis()+" Node "+this.id+" Get Append RPC From, Node "+req_args.leaderId);
+//        }
+
         int prevIndex = req_args.prevLogIndex;
         int prevTerm = req_args.prevLogTerm;
         boolean consistency_check = false;
@@ -369,6 +390,7 @@ public class RaftNode implements MessageHandling, Runnable {
             if_success = false;
             append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
 
+            this.if_received_RPC = true;
             this.Lock.unlock();
 
             return append_entry_reply;
@@ -380,6 +402,13 @@ public class RaftNode implements MessageHandling, Runnable {
              */
             if_success = true;
             ArrayList<LogEntries> leader_logs = req_args.entries;
+            /* For HeartBeat, Remove All UnPaired Entries */
+            if(leader_logs.size() == 0){
+                for(int j=this.node_state.log.size() -1; j >= prevIndex; j--){
+                    this.node_state.log.remove(j);
+                }
+            }
+
             for(int i=0; i<leader_logs.size(); i++){
                 LogEntries entry = leader_logs.get(i);
                 if(this.node_state.log.size() < entry.index){
@@ -411,7 +440,7 @@ public class RaftNode implements MessageHandling, Runnable {
              */
             if(req_args.leaderCommit > this.node_state.commitIndex){
                 if(this.node_state.log.peekLast() != null){
-                    int last_index = this.node_state.log.getLast().index;
+                    int last_index = this.node_state.log.getLast().index;//leader_logs.size() == 0 ? 0 : this.node_state.log.getLast().index;
                     int update_commitIndex = Math.min(req_args.leaderCommit, last_index);
                     for(int i=this.node_state.commitIndex + 1; i <= update_commitIndex; i++){
                         LogEntries entry = this.node_state.log.get(i-1);
@@ -431,7 +460,10 @@ public class RaftNode implements MessageHandling, Runnable {
             }
             append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
 
+            this.if_received_RPC = true;
             this.Lock.unlock();
+
+//            System.out.println(System.currentTimeMillis()+" Node "+this.id+" Returned Append RPC From, Node "+req_args.leaderId);
 
             return append_entry_reply;
         }
@@ -449,12 +481,17 @@ public class RaftNode implements MessageHandling, Runnable {
     @Override
     public StartReply start(int command) {
         /* This Node has to be the leader */
+        this.Lock.lock();
+
         StartReply reply = null;
         if(this.node_state.get_role() != State.state.leader){
             reply = new StartReply(-1, -1, false);
+
+            this.Lock.unlock();
+
             return reply;
         }
-        System.out.println(System.currentTimeMillis()+" Client Submit Commad "+command);
+        System.out.println(System.currentTimeMillis()+"Node "+this.id+" Client Submit Commad "+command);
         /* For The Leader
          * 1. Initialize
          *      'nextIndex'<index of the next log entry to send to that server (initialized to leader last log index + 1)
@@ -475,64 +512,113 @@ public class RaftNode implements MessageHandling, Runnable {
         this.node_state.log.add(cur_entry);
         this.node_state.matchIndex[this.id] = prevLastIndex+1; //Update it for itself
 
+        this.Lock.unlock();
+
+        new ReplicateThread(this, lastLogIndex).start();
+
+        reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
+        return reply;
+
         /* 3. Issues AppendEntries RPCs in parallel to each of the other servers to replicate the entry
               leader retries AppendEntries RPCs indefinitely (even after it has responded to the client)
               until all followers eventually store all log-entries
          */
-        while (true){
-            /* send AppendEntries RPCs in parallel */
-            for(int i=0; i<num_peers; i++){
-                if(i == this.id)continue;
-                /* If last logIndex ≥ nextIndex for a follower i:
-                   send AppendEntries RPC with log entries starting at nextIndex[i]
-                 */
-                if(lastLogIndex >= this.node_state.nextIndex[i]){
-                    prevLastIndex = this.node_state.nextIndex[i] - 1;
-                    prevLastTerm = prevLastIndex == 0 ? 0 : this.node_state.log.get(prevLastIndex-1).term;
-                    ArrayList<LogEntries> entries = logStartFrom(this.node_state.log, this.node_state.nextIndex[i]);
-                    AppendEntriesArgs req_args = new AppendEntriesArgs(this.node_state.currentTerm, this.id, prevLastIndex, prevLastTerm, entries, this.node_state.commitIndex);
-                    /* Start a Thread handling this RPC call */
-                    AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, req_args);
-                    thread.start();
-                }
-            }
-            /* Wait for 50ms for all RPC call Threads to finish*/
-            long t0 = System.currentTimeMillis();
-            while( (System.currentTimeMillis() - t0 ) < 50 ){
 
-            }
-            /*
-                If there exists an N such that N > commitIndex,
-                a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
-                        set commitIndex = N (§5.3, §5.4).
-                TODO: Currently for Simplicity, take 'N = lastLogIndex
-             */
-            int N = lastLogIndex;
-            if(N > this.node_state.commitIndex){
-                int match_count = 0;
-                for(int i=0; i<num_peers; i++){
-                    if(this.node_state.matchIndex[i] >= N){
-                        match_count ++;
-                    }
-                }
-                if(match_count > this.majority  && (this.node_state.log.get(N-1).term == this.node_state.currentTerm)){
-                    /* Apply Entry to State Machine */
-                    ApplyMsg msg = new ApplyMsg(this.id, N, command, false, null);
-                    try {
-                        this.lib.applyChannel(msg);
-                        System.out.println(System.currentTimeMillis()+"Node:"+this.id+" Role: "+this.node_state.get_role()+" index: "+this.node_state.log.get(N-1).index+" term: "+this.node_state.log.get(N-1).term+" command: "+this.node_state.log.get(N-1).command+" Has been Committed");
-                    }
-                    catch (RemoteException e){
-                        e.printStackTrace();
-                    }
-                    this.node_state.commitIndex = N;
-                    this.node_state.lastApplied = N;
-                    reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
-                    return reply;
+//        while (true){
+//            /* send AppendEntries RPCs in parallel */
+//            for(int i=0; i<num_peers; i++){
+//                if(i == this.id)continue;
+//                /* If last logIndex ≥ nextIndex for a follower i:
+//                   send AppendEntries RPC with log entries starting at nextIndex[i]
+//                 */
+//                this.Lock.lock();
+//
+//                /* Make Sure Current Raft Node is still Leader
+//                   < Leader Send RPC!!!>
+//                 */
+//                if(this.node_state.get_role() != State.state.leader){
+//
+//                    this.Lock.unlock();
+//
+//                    return new StartReply(-1, -1, false);
+//                }
+//
+//                if(lastLogIndex >= this.node_state.nextIndex[i]){
+//                    prevLastIndex = this.node_state.nextIndex[i] - 1;
+//                    prevLastTerm = prevLastIndex == 0 ? 0 : this.node_state.log.get(prevLastIndex-1).term;
+//                    ArrayList<LogEntries> entries = logStartFrom(this.node_state.log, this.node_state.nextIndex[i]);
+//                    AppendEntriesArgs req_args = new AppendEntriesArgs(this.node_state.currentTerm, this.id, prevLastIndex, prevLastTerm, entries, this.node_state.commitIndex);
+//                    /* Start a Thread handling this RPC call */
+//                    AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, req_args);
+//                    thread.start();
+//                    System.out.println(System.currentTimeMillis()+" Node"+this.getId()+ " Sent AppendEntries RPC to Node"+i+" "+prevLastIndex+" "+prevLastTerm+" "+entries.size());
+//                }
+//
+//                this.Lock.unlock();
+//
+//            }
+//            /* Wait for 50ms for all RPC call Threads to finish*/
+//            long t0 = System.currentTimeMillis();
+//            while( (System.currentTimeMillis() - t0 ) < 50 ){
+//
+//            }
+//            /*
+//                If there exists an N such that N > commitIndex,
+//                a majority of matchIndex[i] ≥ N, and log[N].term == currentTerm:
+//                        set commitIndex = N (§5.3, §5.4).
+//                TODO: Currently for Simplicity, take 'N = lastLogIndex
+//             */
+//
+////            this.Lock.lock();
+//
+//            for(int N = this.node_state.commitIndex+1; N <= lastLogIndex; N++){
+////                int N = lastLogIndex;
+////                if(N > this.node_state.commitIndex){
+//                    int match_count = 0;
+//                    for(int i=0; i<num_peers; i++){
+//                        if(this.node_state.matchIndex[i] >= N){
+//                            match_count ++;
+//                        }
+//                    }
+//                    /*
+//                        Only log entries from the leader’s current term are committed by counting replicas;
+//                        Once an entry from the current term has been committed in this way,
+//                        Then all prior entries are committed indirectly
+//                     */
+//                    if(match_count > this.majority  && (this.node_state.log.get(N-1).term == this.node_state.currentTerm)){
+//                    /* Apply Entry to State Machine */
+//                        for(int k=this.node_state.commitIndex+1; k<=N; k++) {
+//                            ApplyMsg msg = new ApplyMsg(this.id, k, this.node_state.log.get(k - 1).command, false, null);
+//                            try {
+//                                this.lib.applyChannel(msg);
+//                                System.out.println(System.currentTimeMillis() + "Node:" + this.id + " Role: " + this.node_state.get_role() + " index: " + this.node_state.log.get(k - 1).index + " term: " + this.node_state.log.get(k - 1).term + " command: " + this.node_state.log.get(k - 1).command + " Has been Committed");
+//                            } catch (RemoteException e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                            this.node_state.commitIndex = N;
+//                            this.node_state.lastApplied = N;
+////                            reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
+////                            return reply;
+//                    }
+//
+//            }
 
-                }
-            }
-        }
+//            int cur_command_Count = 0;
+//            for(int t=0; t<num_peers; t++){
+//                if(this.node_state.matchIndex[t] >= lastLogIndex){
+//                    cur_command_Count ++;
+//                }
+//            }
+//
+//            if(cur_command_Count == num_peers){
+//                reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
+//                return reply;
+//            }
+
+//            this.Lock.unlock();
+
+//        }
 
 //        return null;
     }
@@ -566,9 +652,9 @@ public class RaftNode implements MessageHandling, Runnable {
             RequestVoteReply reply = requestVoteHandle(req_args);
             byte[] payload = BytesUtil.serialize(reply);
             respond_message = new Message(MessageType.RequestVoteReply, dest_id, src_id, payload);
-            this.Lock.lock();
-            this.if_received_RPC = true;
-            this.Lock.unlock();
+//            this.Lock.lock();
+//            this.if_received_RPC = true;
+//            this.Lock.unlock();
         }
         else if(type == MessageType.AppendEntriesArgs){
 //            System.out.println(System.currentTimeMillis()+" Node "+this.id+" HeartBeat From "+src_id);
@@ -577,9 +663,9 @@ public class RaftNode implements MessageHandling, Runnable {
             AppendEntriesReply reply = AppendEntriesHandle(append_args);
             byte[] payload = BytesUtil.serialize(reply);
             respond_message = new Message(MessageType.AppendEntriesReply, dest_id, src_id, payload);
-            this.Lock.lock();
-            this.if_received_RPC = true;
-            this.Lock.unlock();
+//            this.Lock.lock();
+//            this.if_received_RPC = true;
+//            this.Lock.unlock();
         }
         return respond_message;
     }
@@ -622,6 +708,9 @@ public class RaftNode implements MessageHandling, Runnable {
     public int getId(){
         return this.id;
     }
+
+
+
     //main function
     public static void main(String args[]) throws Exception {
         if (args.length != 3) throw new Exception("Need 2 args: <port> <id> <num_peers>");

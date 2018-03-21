@@ -35,6 +35,7 @@ public class AppendEntriesThread extends Thread{
             /* The Reply might be null and need to check before Use */
             if(AppendEntriesReplyMessage == null){
                 /* End this Election Thread */
+                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append RPC to Node "+dest_id + " Return NULL!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
                 this.join();
                 return;
             }
@@ -45,7 +46,9 @@ public class AppendEntriesThread extends Thread{
             if(reply.term > node.node_state.currentTerm){
                 /* If RPC response contains term T > currentTerm: set currentTerm = T, convert to follower */
                 node.node_state.currentTerm = reply.term;
+                System.out.print(System.currentTimeMillis() + "Node " + this.node.getId() +" Role From "+this.node.node_state.get_role()+" ");
                 node.node_state.set_role(lib.State.state.follower);
+                System.out.println(System.currentTimeMillis() + "To " + this.node.node_state.get_role());
                 node.node_state.votedFor = null;
                 node.votes_count = 0;
 
@@ -59,6 +62,7 @@ public class AppendEntriesThread extends Thread{
                 /* AppendEntries Rejected, Must due to Consistency Check Failure
                    decrement nextIndex and retry
                  */
+                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append RPC to Node "+dest_id + " rejected!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
                 node.node_state.nextIndex[dest_id] = node.node_state.nextIndex[dest_id] - 1;
             }
             else{
@@ -67,7 +71,16 @@ public class AppendEntriesThread extends Thread{
                      ( )
                  */
                 if(args.entries.size() > 0){
+                    System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append RPC to Node "+dest_id + " Succeeded!");
+                    for(LogEntries e : this.args.entries){
+                        e.print();
+                    }
                     node.node_state.matchIndex[dest_id] = args.entries.get(args.entries.size()-1).index;
+                    node.node_state.nextIndex[dest_id] = args.entries.get(args.entries.size()-1).index+1;
+                }
+
+                else{
+                    System.out.println(System.currentTimeMillis()+" Node "+src_id+" HeartBeat to Node "+dest_id + " Succeeded! " + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size() );
                 }
 
             }

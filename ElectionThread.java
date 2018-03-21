@@ -47,7 +47,9 @@ public class ElectionThread extends Thread{
             if(reply.term > node.node_state.currentTerm){
                 /* If RPC response contains term T > currentTerm: set currentTerm = T, convert to follower */
                 node.node_state.currentTerm = reply.term;
+//                System.out.print(System.currentTimeMillis() + "Node " + this.node.getId() +" Role From "+this.node.node_state.get_role());
                 node.node_state.set_role(lib.State.state.follower);
+//                System.out.println(System.currentTimeMillis() + "To " + this.node.node_state.get_role());
                 node.node_state.votedFor = null;
                 node.votes_count = 0;
             }
@@ -70,6 +72,13 @@ public class ElectionThread extends Thread{
                         if (node.votes_count > node.majority) {
                             node.node_state.set_role(lib.State.state.leader);
                         /* Upon election: send initial empty AppendEntries RPCs (heartbeat) to each server; */
+                        /* Initialize 'nextIndex' */
+                            int prevLastIndex = node.node_state.log.peekLast() == null ? 0 : node.node_state.log.peekLast().index;
+
+                            for(int i=0; i<node.num_peers; i++){
+                                node.node_state.nextIndex[i] = prevLastIndex + 1;
+                            }
+
                             node.generateHeartBeat();
                             System.out.println(System.currentTimeMillis() + " Node" + node.getId() + " Is Leader Now " + "Term: " + node.node_state.currentTerm + " Votes: " + node.votes_count);
                             /* Wake Up Immediately */

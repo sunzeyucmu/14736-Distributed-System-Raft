@@ -19,4 +19,9 @@ public class LogEntries implements Serializable{
         this.index = index;
         this.term = term;
     }
+
+    /* Print the Entry */
+    public void print(){
+        System.out.println("Index: "+this.index+" Term: "+this.term + " Command "+this.command);
+    }
 }
