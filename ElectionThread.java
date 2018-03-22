@@ -30,7 +30,14 @@ public class ElectionThread extends Thread{
             /* Applying instance of transportLib, calling sendMessage.
                The sendMessage will block until there is a reply sent back.
              */
-            RequestVoteReplyMessage = this.node.lib.sendMessage(RequestVoteMessage);
+            try {
+                RequestVoteReplyMessage = this.node.lib.sendMessage(RequestVoteMessage);
+            } catch (Exception e){
+                e.printStackTrace();
+
+                this.join();
+                return;
+            }
 //            System.out.println("Election Thread Started!");
 //            this.node.node_state.set_role(lib.State.state.leader);
 //            System.out.println("Election Thread End!");

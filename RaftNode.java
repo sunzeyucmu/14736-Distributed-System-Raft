@@ -57,14 +57,16 @@ public class RaftNode implements MessageHandling, Runnable {
     private static final int election_timeout_hi = 900;
     private int election_timeout;
 
-    /* Heart Interval */
-    private static int heartbeat_interval = 90;
+    /* Heart Beat Interval */
+    private static int heartbeat_interval = 100;
 
     /* Count the Total Votes Received */
     protected int votes_count;
     protected int majority;
 //    private LogEntry[] logs = {};
 
+    /* Threads Pool For AppendEntries Handling */
+    protected ReplicateThread[] AEThreads;
     /* ... */
     public boolean if_received_RPC;
 
@@ -84,6 +86,12 @@ public class RaftNode implements MessageHandling, Runnable {
 
         votes_count = 0;
         majority = this.num_peers/2;
+
+        AEThreads = new ReplicateThread[num_peers];
+
+//        for(int i=0; i<AEThreads.length; i++){
+//            AEThreads[i] = new AppendEntriesThread()
+//        }
 
         if_received_RPC = false;
         /* Initiate a new thread that creates a background thread
@@ -118,7 +126,7 @@ public class RaftNode implements MessageHandling, Runnable {
                         repeat during idle periods to prevent election timeouts
                      */
                     /* Send HeartBeat */
-//                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Role: "+this.node_state.get_role());
+                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Role: "+this.node_state.get_role());
 
                     try {
                         Thread.sleep(heartbeat_interval);
@@ -126,7 +134,7 @@ public class RaftNode implements MessageHandling, Runnable {
                     catch (Exception e){
                         e.printStackTrace();
                     }
-
+//                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Starts to Generate HeartBeats");
                     generateHeartBeat();
 
                 }
@@ -156,10 +164,15 @@ public class RaftNode implements MessageHandling, Runnable {
                     }
 //                    System.out.println("Election For Node" + this.id + " Started!");
                     /* Convert to Candidate */
+                    this.Lock.lock();
+
                     this.node_state.set_role(State.state.candidate);
                     /* Start Election */
                     System.out.println(System.currentTimeMillis()+" Election For Node" + this.id + " Started!");
                     KickOffElection();
+
+                    this.Lock.unlock();
+
 //                    System.out.println("Election For Node" + this.id + " Ended!");
                 }
             }
@@ -212,26 +225,34 @@ public class RaftNode implements MessageHandling, Runnable {
      */
     public void generateHeartBeat(){
         /* Make Sure Current RaftNode Still Leader */
+        this.Lock.lock();
+
         if(node_state.get_role() == State.state.leader){
             ArrayList<LogEntries> logs = new ArrayList<LogEntries>(); // Empty Entries
+
+//            System.out.println(System.currentTimeMillis()+" Node"+this.id+" Starts to Generate HeartBeats");
+
+
             for(int i=0; i<num_peers; i++){
                 if(i == this.id)continue;
-                Lock.lock();
 
                 int prevLastIndex = this.node_state.nextIndex[i] - 1;
                 int prevLastTerm = prevLastIndex == 0 ? 0 : this.node_state.log.get(prevLastIndex - 1).term;
             /* TODO: Here the last two params (0, 0) are for (prevLogIndex, prevLogTerm); Used Just for Now */
                 AppendEntriesArgs request_args = new AppendEntriesArgs(node_state.currentTerm, this.id, prevLastIndex, prevLastTerm, logs, node_state.commitIndex);
 
-                Lock.unlock();
                 /* Open an AppendEntriesThread for each RPC call
              * Because using sendMessage to requestVote will block until there is a reply sent back.
              * */
-                AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, request_args);
+
+//                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size()+" "+request_args.leaderCommit);
+
+                HeartBeatThread thread = new HeartBeatThread(this,this.id,i, request_args);
                 thread.start();
-                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size());
             }
         }
+        this.Lock.unlock();
+
     }
     public void requestVote() {
 ////        currentTerm += 1;
@@ -322,13 +343,16 @@ public class RaftNode implements MessageHandling, Runnable {
      * @param req_args AppendEntries RPC's args
      * @return
      */
-    public AppendEntriesReply AppendEntriesHandle(AppendEntriesArgs req_args){
+    public synchronized AppendEntriesReply AppendEntriesHandle(AppendEntriesArgs req_args){
         AppendEntriesReply append_entry_reply;
         boolean if_success = false;
         /*
             1. Reply false if term < currentTerm ($5.1)
          */
+
         this.Lock.lock();
+
+//        System.out.println(System.currentTimeMillis()+" AppendEntries RPC From Node" +req_args.leaderId+" To Node"+this.id+" "+req_args.prevLogIndex + " " + req_args.prevLogTerm+" "+ req_args.entries.size()+" "+req_args.leaderCommit);
 
         if(req_args.term < this.node_state.currentTerm){
             System.out.println(System.currentTimeMillis()+" AppendEntries RPC From Node" +req_args.leaderId+" Term: "+req_args.term+" To Node "+this.id+" Term "+this.node_state.currentTerm);
@@ -355,6 +379,8 @@ public class RaftNode implements MessageHandling, Runnable {
             this.votes_count = 0;
         }
 
+//        this.Lock.unlock();
+
         // TODO: Here Only Dead with 'HeartBeat' AppendEntries RPC call, Still 4 Rules need to be implemented
         /* 2. Consistency Check
                 >the leader includes the index and term of the entry in its log that immediately precedes the new entries.
@@ -377,6 +403,8 @@ public class RaftNode implements MessageHandling, Runnable {
         }
         else{
             /* Check the Entry at certain Index */
+//            this.Lock.lock();
+
             if(this.node_state.log.size() >= prevIndex){
                 if(this.node_state.log.get(prevIndex-1).index == prevIndex && this.node_state.log.get(prevIndex-1).term == prevTerm){
                     /* Share the same entry with same index & term with Leader */
@@ -384,10 +412,15 @@ public class RaftNode implements MessageHandling, Runnable {
                 }
             }
 
+//            this.Lock.unlock();
+
         }
         /* 3.1 Consistency_check Fail, Refuse the new Entry */
         if(!consistency_check){
             if_success = false;
+
+//            this.Lock.lock();
+
             append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
 
             this.if_received_RPC = true;
@@ -403,6 +436,9 @@ public class RaftNode implements MessageHandling, Runnable {
             if_success = true;
             ArrayList<LogEntries> leader_logs = req_args.entries;
             /* For HeartBeat, Remove All UnPaired Entries */
+
+//            this.Lock.lock();
+
             if(leader_logs.size() == 0){
                 for(int j=this.node_state.log.size() -1; j >= prevIndex; j--){
                     this.node_state.log.remove(j);
@@ -442,6 +478,7 @@ public class RaftNode implements MessageHandling, Runnable {
                 if(this.node_state.log.peekLast() != null){
                     int last_index = this.node_state.log.getLast().index;//leader_logs.size() == 0 ? 0 : this.node_state.log.getLast().index;
                     int update_commitIndex = Math.min(req_args.leaderCommit, last_index);
+//                    System.out.println(System.currentTimeMillis()+" Node"+this.getId()+" update_commitIndex ="+update_commitIndex);
                     for(int i=this.node_state.commitIndex + 1; i <= update_commitIndex; i++){
                         LogEntries entry = this.node_state.log.get(i-1);
                          /* Apply Entry to State Machine */
@@ -451,6 +488,9 @@ public class RaftNode implements MessageHandling, Runnable {
                             System.out.println(System.currentTimeMillis()+"Node:"+this.id+" Role: "+this.node_state.get_role()+" index: "+entry.index+" term: "+entry.term+" command: "+entry.command+" Has been Committed");
                         }
                         catch (RemoteException e){
+
+                            this.Lock.unlock();
+
                             e.printStackTrace();
                         }
                         this.node_state.commitIndex = i;
@@ -461,9 +501,10 @@ public class RaftNode implements MessageHandling, Runnable {
             append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
 
             this.if_received_RPC = true;
+
             this.Lock.unlock();
 
-//            System.out.println(System.currentTimeMillis()+" Node "+this.id+" Returned Append RPC From, Node "+req_args.leaderId);
+//            System.out.println(System.currentTimeMillis()+" Node "+this.id+" Returned Append RPC From Node "+req_args.leaderId+" "+req_args.prevLogIndex + " " + req_args.prevLogTerm+" "+ req_args.entries.size()+" "+req_args.leaderCommit);
 
             return append_entry_reply;
         }
@@ -499,11 +540,11 @@ public class RaftNode implements MessageHandling, Runnable {
          *      'matchIndex'<index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)>
          *           */
         int prevLastIndex = this.node_state.log.peekLast() == null ? 0 : this.node_state.log.peekLast().index;
-        int prevLastTerm = this.node_state.log.peekLast() == null ? 0 : this.node_state.log.peekLast().term;
+//        int prevLastTerm = this.node_state.log.peekLast() == null ? 0 : this.node_state.log.peekLast().term;
         int lastLogIndex = prevLastIndex + 1;
 
         for(int i=0; i<num_peers; i++){
-            this.node_state.nextIndex[i] = prevLastIndex + 1;
+//            this.node_state.nextIndex[i] = prevLastIndex + 1;
             this.node_state.matchIndex[i] = 0;
         }
 
@@ -512,11 +553,27 @@ public class RaftNode implements MessageHandling, Runnable {
         this.node_state.log.add(cur_entry);
         this.node_state.matchIndex[this.id] = prevLastIndex+1; //Update it for itself
 
-        this.Lock.unlock();
 
-        new ReplicateThread(this, lastLogIndex).start();
+//        new ReplicateThread(this, lastLogIndex).start();
+        /* Start an ReplicateThread For Each Follower */
+        for(int i=0; i<this.num_peers; i++){
+            if(i == this.getId())continue;
+            if(this.AEThreads[i] == null){
+                this.AEThreads[i] = new ReplicateThread(this, i);
+                this.AEThreads[i].start();
+            }
+            else{
+                if(!this.AEThreads[i].isAlive()){
+                    this.AEThreads[i] = new ReplicateThread(this, i);
+                    this.AEThreads[i].start();
+                }
+            }
+        }
 
         reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
+
+        this.Lock.unlock();
+
         return reply;
 
         /* 3. Issues AppendEntries RPCs in parallel to each of the other servers to replicate the entry
