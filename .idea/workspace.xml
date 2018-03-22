@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="5429a974-3d18-4b99-b3e5-b24c8173a0f8" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/AppendEntriesThread.java" afterPath="$PROJECT_DIR$/AppendEntriesThread.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ElectionThread.java" afterPath="$PROJECT_DIR$/ElectionThread.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/RaftNode.java" afterPath="$PROJECT_DIR$/RaftNode.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ReplicateThread.java" afterPath="$PROJECT_DIR$/ReplicateThread.java" />
-    </list>
+    <list default="true" id="5429a974-3d18-4b99-b3e5-b24c8173a0f8" name="Default" comment="" />
     <ignored path="$PROJECT_DIR$/out/" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -32,7 +26,7 @@
         <entry file="file://$PROJECT_DIR$/RaftTest.java">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="235">
-              <caret line="303" column="34" lean-forward="true" selection-start-line="303" selection-start-column="34" selection-end-line="303" selection-end-column="34" />
+              <caret line="303" column="34" lean-forward="false" selection-start-line="303" selection-start-column="34" selection-end-line="303" selection-end-column="34" />
               <folding />
             </state>
           </provider>
@@ -389,12 +383,12 @@
       <workItem from="1521665534813" duration="6481000" />
       <workItem from="1521672889235" duration="5041000" />
       <workItem from="1521678471859" duration="891000" />
-      <workItem from="1521681556305" duration="1163000" />
+      <workItem from="1521681556305" duration="1760000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="155119000" />
+    <option name="totallyTimeSpent" value="155716000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="25" y="23" width="1280" height="777" extended-state="0" />
@@ -792,7 +786,7 @@
     <entry file="file://$PROJECT_DIR$/RaftTest.java">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="235">
-          <caret line="303" column="34" lean-forward="true" selection-start-line="303" selection-start-column="34" selection-end-line="303" selection-end-column="34" />
+          <caret line="303" column="34" lean-forward="false" selection-start-line="303" selection-start-column="34" selection-end-line="303" selection-end-column="34" />
           <folding />
         </state>
       </provider>
