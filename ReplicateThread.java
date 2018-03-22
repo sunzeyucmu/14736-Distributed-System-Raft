@@ -21,6 +21,7 @@ public class ReplicateThread extends Thread {
     public void run() {
         try {
             while (true) {
+//                System.out.println(System.currentTimeMillis()+ " ReplicateThread for Node"+this.node.getId()+" to Node"+this.dest_id);
                 this.node.Lock.lock();
 
                 /* Make Sure Current Raft Node is still Leader
@@ -58,7 +59,7 @@ public class ReplicateThread extends Thread {
 
                     /* The Reply might be null and need to check before Use */
                     if(replyMessage == null){
-                        System.out.println(System.currentTimeMillis()+" Node "+this.node.getId()+" Append RPC to Node "+dest_id + " Return NULL!" + prevLastIndex+" "+ prevLastTerm+" "+entries.size());
+//                        System.out.println(System.currentTimeMillis()+" Node "+this.node.getId()+" Append RPC to Node "+dest_id + " Return NULL!" + prevLastIndex+" "+ prevLastTerm+" "+entries.size());
 
                     }
                     else{

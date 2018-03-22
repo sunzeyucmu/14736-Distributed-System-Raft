@@ -14,35 +14,11 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 
 public class RaftNode implements MessageHandling, Runnable {
-
-//    class LogEntry {
-//        // TODO: index necessary ?
-//        private int term;
-//        private int state;
-//        private int index;
-//        public LogEntry(int term, int state, int index) {
-//            this.state = state;
-//            this.term = term;
-//            this.index = index;
-//        }
-//
-//        public int getTerm() {
-//            return term;
-//        }
-//
-//        public int getState() {
-//            return state;
-//        }
-//    }
-
     private int id; // id for this Node(Server)
     protected  TransportLib lib; // Instance of TransportLib for communication between peer Raft Nodes
     private int port; // port Number of Controller
     protected int num_peers; // Num of peer RaftNodes existing in the cluster
 
-//    private boolean isLeader = false;
-//    private int currentTerm = 0;
-//    private int votedFor = -1;   // -1 if no candidate requested for vote yet
 
     protected State node_state; // State for this RaftNode
 
@@ -135,7 +111,11 @@ public class RaftNode implements MessageHandling, Runnable {
                         e.printStackTrace();
                     }
 //                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Starts to Generate HeartBeats");
+                    this.Lock.lock();
+
                     generateHeartBeat();
+
+                    this.Lock.unlock();
 
                 }
                 else {
@@ -168,7 +148,7 @@ public class RaftNode implements MessageHandling, Runnable {
 
                     this.node_state.set_role(State.state.candidate);
                     /* Start Election */
-                    System.out.println(System.currentTimeMillis()+" Election For Node" + this.id + " Started!");
+//                    System.out.println(System.currentTimeMillis()+" Election For Node" + this.id + " Started!");
                     KickOffElection();
 
                     this.Lock.unlock();
@@ -201,6 +181,7 @@ public class RaftNode implements MessageHandling, Runnable {
         this.node_state.currentTerm ++;
         /* 2. vote for Self */
         this.node_state.votedFor = this.id;
+        votes_count = 0; // Reset the Total Votes Count
         votes_count ++;
         /* 3. Reset Election Timer */
         reset_election_timer();
@@ -225,7 +206,7 @@ public class RaftNode implements MessageHandling, Runnable {
      */
     public void generateHeartBeat(){
         /* Make Sure Current RaftNode Still Leader */
-        this.Lock.lock();
+//        this.Lock.lock();
 
         if(node_state.get_role() == State.state.leader){
             ArrayList<LogEntries> logs = new ArrayList<LogEntries>(); // Empty Entries
@@ -241,7 +222,7 @@ public class RaftNode implements MessageHandling, Runnable {
             /* TODO: Here the last two params (0, 0) are for (prevLogIndex, prevLogTerm); Used Just for Now */
                 AppendEntriesArgs request_args = new AppendEntriesArgs(node_state.currentTerm, this.id, prevLastIndex, prevLastTerm, logs, node_state.commitIndex);
 
-                /* Open an AppendEntriesThread for each RPC call
+            /* Open an AppendEntriesThread for each RPC call
              * Because using sendMessage to requestVote will block until there is a reply sent back.
              * */
 
@@ -251,22 +232,8 @@ public class RaftNode implements MessageHandling, Runnable {
                 thread.start();
             }
         }
-        this.Lock.unlock();
+//        this.Lock.unlock();
 
-    }
-    public void requestVote() {
-////        currentTerm += 1;
-//        byte[] body = BytesUtil.serialize(new RequestVoteArgs(currentTerm, id, commitIndex, logs[commitIndex-1].getTerm()));
-//        // TODO: Boradcast by a Loop or sth ; Specify dest_addr
-//        Message reqMsg = new Message(MessageType.RequestVoteArgs,  port, 1, body);
-//
-//        try {
-//            Message respMsg = lib.sendMessage(reqMsg);
-//            RequestVoteReply reply = (RequestVoteReply) BytesUtil.deserialize(respMsg.getBody());
-//        } catch (RemoteException e) {
-//            e.printStackTrace();
-//        }
-//        // TODO:
     }
 
     /**
@@ -343,7 +310,7 @@ public class RaftNode implements MessageHandling, Runnable {
      * @param req_args AppendEntries RPC's args
      * @return
      */
-    public synchronized AppendEntriesReply AppendEntriesHandle(AppendEntriesArgs req_args){
+    public AppendEntriesReply AppendEntriesHandle(AppendEntriesArgs req_args){
         AppendEntriesReply append_entry_reply;
         boolean if_success = false;
         /*
@@ -508,11 +475,8 @@ public class RaftNode implements MessageHandling, Runnable {
 
             return append_entry_reply;
         }
-        /* Ture (Success) For Now */
-//        if_success = true;
-//        append_entry_reply = new AppendEntriesReply(this.node_state.currentTerm, if_success);
-//        return append_entry_reply;
     }
+
     /*
      *call back.
      * Client request command to be executed --- Start Agreement on a new Entry

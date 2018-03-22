@@ -35,11 +35,12 @@ public class HeartBeatThread extends Thread{
             this.AppendEntriesMessage = new Message(MessageType.AppendEntriesArgs, this.src_id, this.dest_id, payload);
             /* Applying instance of transportLib, calling sendMessage.
              */
-//            System.out.println(System.currentTimeMillis()+" HeartBeat From Node"+src_id+" To Node"+dest_id+" Been Sent!");
             try {
                 AppendEntriesReplyMessage = this.node.lib.sendMessage(AppendEntriesMessage);
             }
             catch(Exception e){
+
+                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append HEARTBEAT to Node "+dest_id + " Failed to SenT!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
 
                 this.join();
                 return;
@@ -49,7 +50,7 @@ public class HeartBeatThread extends Thread{
             /* The Reply might be null and need to check before Use */
             if(AppendEntriesReplyMessage == null){
                 /* End this Election Thread */
-                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append HEARTBEAT to Node "+dest_id + " Return NULL!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
+//                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Append HEARTBEAT to Node "+dest_id + " Return NULL!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
                 this.join();
                 return;
             }
@@ -76,10 +77,9 @@ public class HeartBeatThread extends Thread{
                 /* AppendEntries Rejected, Must due to Consistency Check Failure
                    decrement nextIndex and retry
                  */
-                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Heart Beat to Node "+dest_id + " rejected!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
+//                System.out.println(System.currentTimeMillis()+" Node "+src_id+" Heart Beat to Node "+dest_id + " rejected!" + args.prevLogIndex+" "+args.prevLogTerm+" "+args.entries.size());
                 node.node_state.nextIndex[dest_id] = node.node_state.nextIndex[dest_id] - 1;
 
-//                node.Lock.unlock();
             }
             else{
 
