@@ -229,7 +229,7 @@ public class RaftNode implements MessageHandling, Runnable {
              * */
                 AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, request_args);
                 thread.start();
-                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size());
+//                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size());
             }
         }
     }
