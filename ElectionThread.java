@@ -62,6 +62,9 @@ public class ElectionThread extends Thread{
             }
             else if(reply.term < node.node_state.currentTerm){
                 /* Reply From Former Term, Ignore it */
+
+                this.node.Lock.unlock();
+
                 this.join();
                 return;
             }

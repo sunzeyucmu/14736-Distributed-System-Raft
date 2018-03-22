@@ -1,6 +1,9 @@
 import lib.*;
 
 /**
+ * <$$$>
+ *  In this Version, This class is deprecated
+ * </$$$>
  * Empty AppendEntries RPC
  * Thread Handling one AppendEntries RPC Call to a specific peer Raft Node
  */

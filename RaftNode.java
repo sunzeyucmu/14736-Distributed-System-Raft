@@ -102,7 +102,7 @@ public class RaftNode implements MessageHandling, Runnable {
                         repeat during idle periods to prevent election timeouts
                      */
                     /* Send HeartBeat */
-                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Role: "+this.node_state.get_role());
+//                    System.out.println(System.currentTimeMillis()+" Node"+this.id+" Role: "+this.node_state.get_role());
 
                     try {
                         Thread.sleep(heartbeat_interval);
@@ -209,13 +209,15 @@ public class RaftNode implements MessageHandling, Runnable {
 //        this.Lock.lock();
 
         if(node_state.get_role() == State.state.leader){
-            ArrayList<LogEntries> logs = new ArrayList<LogEntries>(); // Empty Entries
+//            ArrayList<LogEntries> logs = new ArrayList<LogEntries>(); // Empty Entries
 
 //            System.out.println(System.currentTimeMillis()+" Node"+this.id+" Starts to Generate HeartBeats");
 
 
             for(int i=0; i<num_peers; i++){
                 if(i == this.id)continue;
+
+                ArrayList<LogEntries> logs = this.logStartFrom(this.node_state.log, this.node_state.nextIndex[i]);
 
                 int prevLastIndex = this.node_state.nextIndex[i] - 1;
                 int prevLastTerm = prevLastIndex == 0 ? 0 : this.node_state.log.get(prevLastIndex - 1).term;
@@ -228,7 +230,7 @@ public class RaftNode implements MessageHandling, Runnable {
 
 //                System.out.println(System.currentTimeMillis() + " Node" + this.getId() + " Sent HeartBeat RPC to Node" + i + " " + prevLastIndex + " " + prevLastTerm + " " + logs.size()+" "+request_args.leaderCommit);
 
-                HeartBeatThread thread = new HeartBeatThread(this,this.id,i, request_args);
+                AppendEntriesThread thread = new AppendEntriesThread(this,this.id,i, request_args);
                 thread.start();
             }
         }
@@ -452,7 +454,7 @@ public class RaftNode implements MessageHandling, Runnable {
                         ApplyMsg msg = new ApplyMsg(this.id, entry.index, entry.command, false, null);
                         try {
                             this.lib.applyChannel(msg);
-                            System.out.println(System.currentTimeMillis()+"Node:"+this.id+" Role: "+this.node_state.get_role()+" index: "+entry.index+" term: "+entry.term+" command: "+entry.command+" Has been Committed");
+//                            System.out.println(System.currentTimeMillis()+"Node:"+this.id+" Role: "+this.node_state.get_role()+" index: "+entry.index+" term: "+entry.term+" command: "+entry.command+" Has been Committed");
                         }
                         catch (RemoteException e){
 
@@ -504,7 +506,6 @@ public class RaftNode implements MessageHandling, Runnable {
          *      'matchIndex'<index of highest log entry known to be replicated on server (initialized to 0, increases monotonically)>
          *           */
         int prevLastIndex = this.node_state.log.peekLast() == null ? 0 : this.node_state.log.peekLast().index;
-//        int prevLastTerm = this.node_state.log.peekLast() == null ? 0 : this.node_state.log.peekLast().term;
         int lastLogIndex = prevLastIndex + 1;
 
         for(int i=0; i<num_peers; i++){
@@ -518,21 +519,22 @@ public class RaftNode implements MessageHandling, Runnable {
         this.node_state.matchIndex[this.id] = prevLastIndex+1; //Update it for itself
 
 
-//        new ReplicateThread(this, lastLogIndex).start();
-        /* Start an ReplicateThread For Each Follower */
-        for(int i=0; i<this.num_peers; i++){
-            if(i == this.getId())continue;
-            if(this.AEThreads[i] == null){
-                this.AEThreads[i] = new ReplicateThread(this, i);
-                this.AEThreads[i].start();
-            }
-            else{
-                if(!this.AEThreads[i].isAlive()){
-                    this.AEThreads[i] = new ReplicateThread(this, i);
-                    this.AEThreads[i].start();
-                }
-            }
-        }
+//        /* Start an ReplicateThread For Each Follower */
+//        for(int i=0; i<this.num_peers; i++){
+//            if(i == this.getId())continue;
+//            if(this.AEThreads[i] == null){
+//                this.AEThreads[i] = new ReplicateThread(this, i);
+//                this.AEThreads[i].start();
+//            }
+//            else{
+//                if(!this.AEThreads[i].isAlive()){
+//                    this.AEThreads[i] = new ReplicateThread(this, i);
+//                    this.AEThreads[i].start();
+//                }
+//            }
+//        }
+
+        generateHeartBeat();
 
         reply = new StartReply(lastLogIndex, this.node_state.currentTerm, true);
 
